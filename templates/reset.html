@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Redefinir Senha</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: #f0f0f0;
+            padding: 40px;
+        }
+        .box {
+            background: white;
+            padding: 25px;
+            max-width: 400px;
+            margin: auto;
+            border-radius: 10px;
+            box-shadow: 0 0 12px rgba(0,0,0,0.2);
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin-top: 8px;
+            margin-bottom: 12px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="box">
+    <h2>Redefinir Senha</h2>
+
+    <form method="POST">
+        <label>E-mail</label>
+        <input type="email" name="email" required>
+
+        <label>Código de Recuperação</label>
+        <input type="text" name="code" maxlength="8" required>
+
+        <label>Nova Senha</label>
+        <input type="password" name="password" required>
+
+        <label>Confirme a Nova Senha</label>
+        <input type="password" name="confirm_password" required>
+
+        <button type="submit">Alterar Senha</button>
+    </form>
+</div>
+
+</body>
+</html>
