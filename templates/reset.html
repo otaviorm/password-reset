@@ -1,62 +1,199 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
     <title>Redefinir Senha</title>
+
+    <!-- MUITO IMPORTANTE para ficar bom no celular -->
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
     <style>
-        body {
-            font-family: Arial;
-            background: #f0f0f0;
-            padding: 40px;
-        }
-        .box {
-            background: white;
-            padding: 25px;
-            max-width: 400px;
-            margin: auto;
-            border-radius: 10px;
-            box-shadow: 0 0 12px rgba(0,0,0,0.2);
-        }
-        input {
-            width: 100%;
-            padding: 10px;
-            margin-top: 8px;
-            margin-bottom: 12px;
-            border-radius: 6px;
-            border: 1px solid #ccc;
-        }
-        button {
-            width: 100%;
-            padding: 12px;
-            background: #007bff;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-size: 16px;
-        }
+      :root {
+        --bg: #f3f4f6;
+        --card-bg: #ffffff;
+        --accent: #2563eb;
+        --accent-hover: #1d4ed8;
+        --border: #e5e7eb;
+        --text: #111827;
+        --muted: #6b7280;
+        --error: #dc2626;
+        --success: #16a34a;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        background: var(--bg);
+        min-height: 100vh;
+
+        /* Centraliza o conteúdo na tela toda */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .wrapper {
+        width: 100%;
+        padding: 16px;
+      }
+
+      .card {
+        margin: 0 auto;
+        max-width: 480px; /* em telas grandes ele não fica gigante */
+        width: 100%;      /* em telas pequenas ocupa quase tudo */
+        background: var(--card-bg);
+        border-radius: 16px;
+        padding: 20px 18px 24px;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.18);
+      }
+
+      h1 {
+        margin: 0 0 16px;
+        font-size: 22px;
+        font-weight: 700;
+        color: var(--text);
+        text-align: center;
+      }
+
+      p.subtitle {
+        margin: 0 0 18px;
+        font-size: 14px;
+        color: var(--muted);
+        text-align: center;
+      }
+
+      .field {
+        margin-bottom: 12px;
+      }
+
+      label {
+        display: block;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 4px;
+      }
+
+      input {
+        width: 100%;
+        height: 44px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        padding: 0 10px;
+        font-size: 15px;
+      }
+
+      input:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.45);
+      }
+
+      button {
+        margin-top: 12px;
+        width: 100%;
+        height: 46px;
+        border-radius: 10px;
+        border: none;
+        font-size: 15px;
+        font-weight: 600;
+        color: #ffffff;
+        background: var(--accent);
+        cursor: pointer;
+      }
+
+      button:hover {
+        background: var(--accent-hover);
+      }
+
+      .message {
+        margin-top: 12px;
+        font-size: 14px;
+        text-align: center;
+      }
+
+      .message.error {
+        color: var(--error);
+      }
+
+      .message.success {
+        color: var(--success);
+      }
     </style>
-</head>
-<body>
+  </head>
 
-<div class="box">
-    <h2>Redefinir Senha</h2>
+  <body>
+    <div class="wrapper">
+      <form class="card" method="post" action="/reset">
+        <h1>Redefinir Senha</h1>
+        <p class="subtitle">
+          Digite seu e-mail, o código de recuperação e sua nova senha.
+        </p>
 
-    <form method="POST">
-        <label>E-mail</label>
-        <input type="email" name="email" required>
+        <div class="field">
+          <label for="email">E-mail</label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            required
+            placeholder="seuemail@exemplo.com"
+          />
+        </div>
 
-        <label>Código de Recuperação</label>
-        <input type="text" name="code" maxlength="8" required>
+        <div class="field">
+          <label for="code">Código de Recuperação</label>
+          <input
+            id="code"
+            name="code"
+            type="text"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            minlength="6"
+            maxlength="8"
+            required
+            placeholder="Código recebido por e-mail"
+          />
+        </div>
 
-        <label>Nova Senha</label>
-        <input type="password" name="password" required>
+        <div class="field">
+          <label for="password">Nova Senha</label>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            required
+            minlength="6"
+            placeholder="Nova senha"
+          />
+        </div>
 
-        <label>Confirme a Nova Senha</label>
-        <input type="password" name="confirm_password" required>
+        <div class="field">
+          <label for="password_confirm">Confirme a Nova Senha</label>
+          <input
+            id="password_confirm"
+            name="password_confirm"
+            type="password"
+            required
+            minlength="6"
+            placeholder="Repita a nova senha"
+          />
+        </div>
 
         <button type="submit">Alterar Senha</button>
-    </form>
-</div>
 
-</body>
+        {# Mensagem que o backend manda (erro ou sucesso) #}
+        {% if message %}
+        <p class="message {{ 'error' if error else 'success' }}">
+          {{ message }}
+        </p>
+        {% endif %}
+      </form>
+    </div>
+  </body>
 </html>
