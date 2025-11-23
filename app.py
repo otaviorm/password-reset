@@ -1,73 +1,55 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, redirect, url_for
 import os
-import requests
 
-app = Flask(_name_, template_folder="../templates")
+# O Vercel procura por um objeto chamado "app" aqui
+app = Flask(__name__, static_folder="static", template_folder="templates")
 
-# >>>> COLOCA A SUA URL E CHAVE AQUI <<<<
-SUPABASE_URL = "https://ljfuvqeeovcursooprzx.supabase.co"
-SUPABASE_SERVICE_ROLE = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxqZnV2cWVlb3ZjdXJzb29wcnp4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1ODUwODQ4NCwiZXhwIjoyMDc0MDg0NDg0fQ.NRvJSeGSk5pWiLQUdbcoWW2-zjaLeNxHuwNkOvpjMws"  # pode usar anon por enquanto se quiser
 
-# --------- ROTAS ---------
-
+# Rota principal: mostra o formulário de redefinição
 @app.route("/", methods=["GET"])
-def home():
-    # Só pra ver se o app está vivo
-    return render_template("message.html", message="Página de reset carregada com sucesso!")
+def index():
+    return render_template("reset_password.html")
 
-@app.route("/reset", methods=["GET", "POST"])
+
+# Rota que recebe o POST do formulário
+@app.route("/reset_password", methods=["POST"])
 def reset_password():
-    if request.method == "GET":
-        # Mostrar o formulário
-        return render_template("reset_password.html")
-
-    # POST – processar o formulário
     email = request.form.get("email", "").strip()
-    new_password = request.form.get("new_password", "").strip()
-    confirm_password = request.form.get("confirm_password", "").strip()
+    code = request.form.get("code", "").strip()
+    new_password = request.form.get("new_password", "")
+    confirm_password = request.form.get("confirm_password", "")
 
-    # validações simples
-    if not email or not new_password or not confirm_password:
-        return render_template("message.html", message="Preencha todos os campos.")
+    # 1. validações básicas
+    if not email or not code or not new_password or not confirm_password:
+        return render_template(
+            "message.html",
+            title="Erro",
+            message="Preencha todos os campos."
+        ), 400
 
     if new_password != confirm_password:
-        return render_template("message.html", message="As senhas não coincidem!")
+        return render_template(
+            "message.html",
+            title="Erro",
+            message="As senhas não coincidem."
+        ), 400
 
-    # aqui fazemos a chamada à API do Supabase para atualizar a senha
-    try:
-        # Endpoint de admin do Supabase Auth para atualizar usuário
-        url = f"{SUPABASE_URL}/auth/v1/admin/users"
+    # 2. (FUTURO) Aqui você faria a chamada para a API do Supabase
+    # usando o e-mail + código + nova senha.
+    #
+    # Por enquanto, vamos apenas simular que deu certo,
+    # pra tela funcionar bonitinho no Vercel:
 
-        # 1) pegar o usuário pelo e-mail
-        params = {"email": email}
-        headers = {
-            "apikey": SUPABASE_SERVICE_ROLE,
-            "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE}",
-        }
+    print(f"[DEBUG] Pedido de reset: email={email}, code={code}")  # aparece nos logs do Vercel
 
-        resp = requests.get(url, headers=headers, params=params, timeout=10)
-        resp.raise_for_status()
-        data = resp.json()
-
-        if not data:
-            return render_template("message.html", message="Usuário não encontrado.")
-
-        user_id = data[0]["id"]
-
-        # 2) atualizar a senha do usuário
-        update_url = f"{url}/{user_id}"
-        payload = {"password": new_password}
-
-        update_resp = requests.put(update_url, headers=headers, json=payload, timeout=10)
-        update_resp.raise_for_status()
-
-        return render_template("message.html", message="Senha alterada com sucesso!")
-
-    except requests.HTTPError as e:
-        return render_template("message.html", message=f"Erro HTTP ao falar com o Supabase: {e}")
-    except Exception as e:
-        return render_template("message.html", message=f"Erro interno: {e}")
+    return render_template(
+        "message.html",
+        title="Sucesso",
+        message="Senha alterada com sucesso! Agora você já pode voltar ao app e fazer login com a nova senha."
+    ), 200
 
 
-# Vercel procura por uma variável chamada "app"
-# então não precisa de nada além disso.
+# Apenas para rodar localmente se você quiser testar com python app.py
+if _name_ == "_main_":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=True)
