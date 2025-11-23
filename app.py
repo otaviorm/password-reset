@@ -2,9 +2,7 @@ from flask import Flask, render_template, request
 import os
 import requests
 
-# ==========================
-# CONFIGURAÇÃO DO SUPABASE
-# ==========================
+
 SUPABASE_URL = "https://ljfuvqeeovcursooprzx.supabase.co"
 SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxqZnV2cWVlb3ZjdXJzb29wcnp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1MDg0ODQsImV4cCI6MjA3NDA4NDQ4NH0.P_xmFyvkuHiBcqbfeT67CN6OzgMXZNjC-oF4Mw6l-zQ"
 
@@ -16,9 +14,6 @@ SUPABASE_USER_URL = f"{SUPABASE_URL}/auth/v1/user"
 app = Flask(__name__, static_folder="static", template_folder="templates")
 
 
-# ==========================
-# ROTAS
-# ==========================
 
 # Rota principal: mostra o formulário
 @app.route("/", methods=["GET"])
