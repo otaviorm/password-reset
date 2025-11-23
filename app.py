@@ -1,61 +1,48 @@
-from flask import Flask, request, render_template, redirect
-from supabase import create_client, Client
+from flask import Flask, render_template, request
 
 app = Flask(__name__)
 
-# 🔗 Coloque sua URL e chave ANON aqui:
-SUPABASE_URL = "https://ljfuvqeeovcursooprzx.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxqZnV2cWVlb3ZjdXJzb29wcnp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1MDg0ODQsImV4cCI6MjA3NDA4NDQ4NH0.P_xmFyvkuHiBcqbfeT67CN6OzgMXZNjC-oF4Mw6l-zQ"
-
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-
-@app.route("/", methods=["GET"])
+@app.route("/", methods=["GET", "POST"])
 def index():
-    # só redireciona para a página de reset
-    return redirect("/reset")
+    error = None
+    success = None
 
+    if request.method == "POST":
+        # pega os campos vindos do formulário
+        email = (request.form.get("email") or "").strip()
+        # por enquanto o código é ignorado, mas mantemos o campo na tela
+        recovery_code = (request.form.get("recovery_code") or "").strip()
 
-@app.route("/reset", methods=["GET", "POST"])
-def reset_password():
-    if request.method == "GET":
-        return render_template("reset.html")
+        new_password = (request.form.get("new_password") or "").strip()
+        confirm_password = (request.form.get("confirm_password") or "").strip()
 
-    email = request.form.get("email")
-    code = request.form.get("code")  # código numérico de 8 dígitos
-    new_password = request.form.get("password")
-    confirm_password = request.form.get("confirm_password")
+        # 1. validação básica
+        if not email or not new_password or not confirm_password:
+            error = "Preencha todos os campos obrigatórios."
+            return render_template("index.html", error=error, success=None, email=email)
 
-    # validações simples
-    if not email or not code or not new_password:
-        return "Preencha todos os campos!"
+        # 2. confere se as senhas são iguais
+        if new_password != confirm_password:
+            error = "As senhas não coincidem!"
+            return render_template("index.html", error=error, success=None, email=email)
 
-    if new_password != confirm_password:
-        return "As senhas não coincidem!"
+        # 3. AQUI entraria a chamada real ao Supabase para trocar a senha
+        #    (no nosso protótipo simplificado vamos só simular sucesso)
+        # -----------------------------------------------------------------
+        # Exemplo (quando você quiser ligar de verdade ao Supabase):
+        # from supabase import create_client
+        # SUPABASE_URL = "https://...supabase.co"
+        # SUPABASE_ANON_KEY = "chave..."
+        # supabase = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
+        # resp = supabase.auth.admin.update_user_by_email(email, {"password": new_password})
+        # if "error" em resp:
+        #     error = "Não foi possível alterar a senha. Tente novamente mais tarde."
+        # else:
+        #     success = "Senha alterada com sucesso!"
+        # -----------------------------------------------------------------
 
-    if len(code) != 8 or not code.isdigit():
-        return "Código inválido! Deve ter 8 dígitos numéricos."
+        success = "Senha alterada com sucesso! Agora você já pode voltar para o app e fazer login com a nova senha."
+        return render_template("index.html", error=None, success=success, email=email)
 
-    # 🔥 SUPABASE: confirmar token de recuperação
-    try:
-        response = supabase.auth.verify_otp({
-            "email": email,
-            "token": code,
-            "type": "recovery"
-        })
-
-        if response.get("session") is None:
-            return "Código inválido ou expirado!"
-
-        # trocar senha
-        update_response = supabase.auth.update_user({"password": new_password})
-
-        return "Senha alterada com sucesso! Agora você já pode voltar ao app."
-
-    except Exception as e:
-        return f"Erro ao redefinir a senha: {str(e)}"
-
-
-# necessário para rodar localmente
-if __name__ == "__main__":
-    app.run(debug=True)
+    # GET: mostra o formulário vazio
+    return render_template("index.html", error=error, success=success, email="")
