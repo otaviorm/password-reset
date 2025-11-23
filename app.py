@@ -1,199 +1,143 @@
-from flask import Flask, render_template, request
+import os
 import requests
+from flask import Flask, render_template, request
 
-# ============================
-# CONFIGURAÇÕES DO SUPABASE
-# ============================
+# === CONFIGURAÇÕES DO SUPABASE ===
+# Para seu projeto, pode deixar hardcoded (é um trabalho da faculdade).
+# Se quiser, depois trocamos para variáveis de ambiente.
+SUPABASE_URL = "https://ljfuvqeeovcursooprzx.supabase.co"  # <-- a sua URL
+SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxqZnV2cWVlb3ZjdXJzb29wcnp4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1ODUwODQ4NCwiZXhwIjoyMDc0MDg0NDg0fQ.NRvJSeGSk5pWiLQUdbcoWW2-zjaLeNxHuwNkOvpjMws"        # <-- chave service_role
 
-# Coloca aqui a URL do seu projeto Supabase (sem /auth no final)
-SUPABASE_URL = "https://ljfuvqeeovcursooprzx.supabase.co"  # <- troque se for diferente
-# Coloca aqui a CHAVE PÚBLICA (anon) do seu Supabase
-SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxqZnV2cWVlb3ZjdXJzb29wcnp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1MDg0ODQsImV4cCI6MjA3NDA4NDQ4NH0.P_xmFyvkuHiBcqbfeT67CN6OzgMXZNjC-oF4Mw6l-zQ"
+# IMPORTANTE:
+# - precisa ser a SERVICE_ROLE_KEY (do Supabase) pra poder trocar senha
+# - NÃO é a anon key
 
 app = Flask(
     _name_,
     template_folder="templates",
-    static_folder="static",
+    static_folder="static"
 )
 
 
 @app.route("/", methods=["GET"])
-def form():
+def index():
     """
     Mostra o formulário de redefinição de senha.
-    Se vierem email e code na URL (?email=...&code=...),
-    a gente já pré-preenche os campos.
+    Se der erro ao renderizar o template, o Flask iria dar 500,
+    então é bom garantir que o arquivo reset_password.html existe
+    dentro de templates/.
     """
-    email = request.args.get("email", "")
-    code = request.args.get("code", "")
-    message = request.args.get("message", "")
-
-    return render_template(
-        "reset_password.html",
-        email=email,
-        code=code,
-        message=message,
-        error=False,
-    )
+    return render_template("reset_password.html")
 
 
-@app.route("/reset-password", methods=["POST"])
+@app.route("/reset", methods=["POST"])
 def reset_password():
     """
-    Recebe o formulário, valida os dados e fala com o Supabase:
-      1) verifyOtp (type=recovery) usando email + código
-      2) se der certo, atualiza a senha do usuário
+    Processa o formulário:
+      1. valida campos
+      2. verifica o código (OTP) no Supabase
+      3. altera a senha do usuário com a Admin API
     """
-
-    email = request.form.get("email", "").strip()
-    code = request.form.get("code", "").strip()
-    password = request.form.get("password", "")
-    confirm = request.form.get("confirm", "")
-
-    # ============================
-    # 1. Validações básicas
-    # ============================
-    if not email or not code or not password or not confirm:
-        return render_template(
-            "reset_password.html",
-            email=email,
-            code=code,
-            message="Preencha todos os campos.",
-            error=True,
-        )
-
-    if password != confirm:
-        return render_template(
-            "reset_password.html",
-            email=email,
-            code=code,
-            message="As senhas não coincidem.",
-            error=True,
-        )
-
-    if len(password) < 6:
-        return render_template(
-            "reset_password.html",
-            email=email,
-            code=code,
-            message="A nova senha deve ter pelo menos 6 caracteres.",
-            error=True,
-        )
-
-    # ============================
-    # 2. Chama verifyOtp no Supabase
-    # ============================
-
-    verify_url = f"{SUPABASE_URL}/auth/v1/verify"
-    verify_payload = {
-        "type": "recovery",
-        "email": email,
-        "token": code,
-    }
-    headers = {
-        "apikey": SUPABASE_ANON_KEY,
-        "Content-Type": "application/json",
-    }
-
     try:
-        verify_resp = requests.post(verify_url, json=verify_payload, headers=headers)
-    except Exception as e:
-        # Erro de rede, timeout, etc
-        return render_template(
-            "reset_password.html",
-            email=email,
-            code=code,
-            message=f"Erro ao falar com o Supabase (verifyOtp): {e}",
-            error=True,
+        email = request.form.get("email", "").strip().lower()
+        code = request.form.get("code", "").strip()
+        new_password = request.form.get("password", "")
+        confirm_password = request.form.get("password_confirm", "")
+
+        # --- Validações básicas ---
+        if not email or not code or not new_password or not confirm_password:
+            return render_template("message.html", message="Preencha todos os campos."), 400
+
+        if new_password != confirm_password:
+            return render_template("message.html", message="As senhas não coincidem!"), 400
+
+        # --- 1. Verificar o código (OTP) no Supabase ---
+        verify_url = f"{SUPABASE_URL}/auth/v1/verify"
+        verify_headers = {
+            "apikey": SERVICE_ROLE_KEY,
+            "Content-Type": "application/json"
+        }
+        verify_payload = {
+            "email": email,
+            "token": code,
+            "type": "recovery"
+        }
+
+        verify_resp = requests.post(
+            verify_url,
+            json=verify_payload,
+            headers=verify_headers,
+            timeout=10
         )
 
-    if not verify_resp.ok:
-        # Tentamos puxar mensagem amigável da resposta
-        try:
-            data = verify_resp.json()
-            supabase_msg = data.get("msg") or data.get("message") or str(data)
-        except Exception:
-            supabase_msg = verify_resp.text
+        print("Verify status:", verify_resp.status_code)
+        print("Verify body:", verify_resp.text)
 
-        return render_template(
-            "reset_password.html",
-            email=email,
-            code=code,
-            message=f"Código inválido ou expirado. Detalhes: {supabase_msg}",
-            error=True,
-        )
+        if verify_resp.status_code != 200:
+            return render_template(
+                "message.html",
+                message="Código inválido ou expirado. Tente gerar um novo link."
+            ), 400
 
-    # A resposta normalmente contém session/access_token
-    try:
         data = verify_resp.json()
-        # Alguns clients retornam {"access_token": "..."}
-        # outros retornam {"session": {"access_token": "..."}}
-        access_token = data.get("access_token")
-        if not access_token and isinstance(data.get("session"), dict):
-            access_token = data["session"].get("access_token")
-    except Exception:
-        access_token = None
+        user = data.get("user")
+        if not user:
+            return render_template(
+                "message.html",
+                message="Usuário não encontrado após verificação."
+            ), 400
 
-    if not access_token:
-        return render_template(
-            "reset_password.html",
-            email=email,
-            code=code,
-            message=(
-                "Não foi possível obter o token de sessão após verificar o código. "
-                "Verifique a configuração do Supabase."
-            ),
-            error=True,
+        user_id = user.get("id")
+        if not user_id:
+            return render_template(
+                "message.html",
+                message="Não foi possível identificar o usuário."
+            ), 400
+
+        # --- 2. Alterar a senha usando a Admin API ---
+        update_url = f"{SUPABASE_URL}/auth/v1/admin/users/{user_id}"
+        update_headers = {
+            "apikey": SERVICE_ROLE_KEY,
+            "Authorization": f"Bearer {SERVICE_ROLE_KEY}",
+            "Content-Type": "application/json"
+        }
+        update_payload = {
+            "password": new_password
+        }
+
+        update_resp = requests.put(
+            update_url,
+            json=update_payload,
+            headers=update_headers,
+            timeout=10
         )
 
-    # ============================
-    # 3. Atualiza a senha do usuário
-    # ============================
+        print("Update status:", update_resp.status_code)
+        print("Update body:", update_resp.text)
 
-    update_url = f"{SUPABASE_URL}/auth/v1/user"
-    update_payload = {"password": password}
-    update_headers = {
-        "apikey": SUPABASE_ANON_KEY,
-        "Authorization": f"Bearer {access_token}",
-        "Content-Type": "application/json",
-    }
+        if update_resp.status_code not in (200, 201):
+            return render_template(
+                "message.html",
+                message="Erro ao atualizar a senha. Tente novamente ou fale com o responsável."
+            ), 500
 
-    try:
-        up_resp = requests.put(update_url, json=update_payload, headers=update_headers)
+        return render_template(
+            "message.html",
+            message="Senha alterada com sucesso! Agora você já pode voltar ao app e entrar com a nova senha."
+        )
+
     except Exception as e:
+        # Isso aqui evita que o usuário veja um 500 seco.
+        # E as prints aparecem nos logs do Vercel pra gente debugar.
+        print("ERRO NO /reset:", repr(e))
         return render_template(
-            "reset_password.html",
-            email=email,
-            code=code,
-            message=f"Erro ao atualizar a senha no Supabase: {e}",
-            error=True,
-        )
-
-    if not up_resp.ok:
-        try:
-            data = up_resp.json()
-            supabase_msg = data.get("msg") or data.get("message") or str(data)
-        except Exception:
-            supabase_msg = up_resp.text
-
-        return render_template(
-            "reset_password.html",
-            email=email,
-            code=code,
-            message=f"Falha ao atualizar a senha. Detalhes: {supabase_msg}",
-            error=True,
-        )
-
-    # Sucesso!
-    return render_template(
-        "reset_password.html",
-        email="",
-        code="",
-        message="Senha alterada com sucesso! Você já pode voltar ao app e fazer login.",
-        error=False,
-    )
+            "message.html",
+            message="Ocorreu um erro inesperado ao tentar redefinir a senha."
+        ), 500
 
 
-# Para rodar localmente (opcional, pra testar no navegador)
+# Vercel detecta o objeto 'app' automaticamente.
+# Não precisa de nada além disso.
 if _name_ == "_main_":
+    # Apenas para rodar localmente, se você quiser:
     app.run(debug=True)
